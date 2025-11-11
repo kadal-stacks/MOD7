@@ -1,0 +1,501 @@
+========================================================================
+MOD7 EXPERIMENT 1: DUAL BMP280 SENSOR READING VIA SPI
+FLOWCHART DESCRIPTION (Text-based representation)
+========================================================================
+
+FLOWCHART SYMBOL GUIDE:
+- [OVAL] = Terminator (Start/End)
+- [HEXAGON] = Preparation/Initialization
+- [RECTANGLE] = Process (calculation/operation)
+- [RECT-BARS] = Predefined Process (function call)
+- <DIAMOND> = Decision (Yes/No)
+- /PARALLELOGRAM/ = Input/Output
+- (DISPLAY) = Display output
+- [TRAPEZOID] = Manual Operation
+- (CIRCLE) = On-page connector
+- ---> = Flow direction
+
+========================================================================
+MAIN FLOWCHART
+========================================================================
+
+[START - Main Program]
+         |
+         v
+[HEXAGON: Set Global Variables]
+"Initialize I/O Port, Register Address variables"
+         |
+         v
+[HEXAGON: Configure Clock]
+"Set CLKPR for 16MHz operation"
+         |
+         v
+[HEXAGON: Configure I/O Pins]
+"DDRD = 0x06 (PD2 for CSB)"
+"PORTD.2 = 1 (CSB high/off)"
+"DDRB: MOSI, SCK as output, MISO as input"
+"DDRC = 0x0C (PC2 for CSA)"
+"PORTC.2 = 1 (CSA high/off)"
+"PORTC.3 = 0 (Interrupt indicator)"
+         |
+         v
+[HEXAGON: Configure UART]
+"Set UBRR0H = 0x00, UBRR0L = 0x67"
+"Enable RXEN0, TXEN0, RXC interrupt"
+"Set frame: 8 data bits, 1 stop bit"
+         |
+         v
+[HEXAGON: Configure SPI]
+"SPSR: Disable SPI2X mode"
+"SPCR: Enable SPI, Master mode, SCK=250kHz"
+"SPCR: MSB first"
+         |
+         v
+[RECT-BARS: Call compensation_init_whole()]
+"Load calibration data for both sensors"
+         |
+         v
+[HEXAGON: Enable Global Interrupts]
+"SEI instruction"
+         |
+         v
+[HEXAGON: Set Initial Display]
+"Set Tampilan awal: 'main'"
+"Masukkan Input $ untuk start/stop!"
+         |
+         v
+    +---------+
+    |  LOOP   |<----------------------------------------+
+    +---------+                                         |
+         |                                              |
+         v                                              |
+    (CIRCLE-A) ---------------------------------------->|
+         |                                              |
+         v                                              |
+  <DIAMOND: Tombol keyboard $ ditekan?>                |
+         |                                              |
+    [Tidak]--------------------------------------------->
+         |                                              |
+    [Ya] --> [RECT-BARS: USART_RXC Interrupt]          |
+         |                                              |
+         v                                              |
+    (CIRCLE-B)                                          |
+         |                                              |
+         v                                              |
+  <DIAMOND: Input Valid? Terdaftar?>                   |
+         |                                              |
+    [Tidak]--------------------------------------------->
+         |                                              |
+    [Ya]                                                |
+         |                                              |
+         v                                              |
+  <DIAMOND: Tombol "$" ditekan?>                       |
+         |                                              |
+    [Tidak]                                             |
+         |                                              |
+         v                                              |
+    [Display nilai waktu terus menerus]                |
+         |                                              |
+         v                                              |
+    (CIRCLE-C) --> [Terminal Transmitter] ------------>|
+         |                                              |
+         v                                              |
+    (DISPLAY: Display Pada Terminal Com0Com)           |
+         |                                              |
+         v                                              |
+  <DIAMOND: Selesai/Reset Loop?>                       |
+         |                                              |
+    [Ya] --> Back to LOOP                              |
+         |                                              |
+    [Tidak] --> Continue to sensor reading             |
+         |                                              |
+    [Ya from Tombol "$"]                                |
+         |                                              |
+         v                                              |
+  <DIAMOND: program == 1?>                             |
+         |                                              |
+    [Tidak]--------------------------------------------->
+         |                                              |
+    [Ya]                                                |
+         |                                              |
+         v                                              |
+  +--[SENSOR A READING BLOCK]--+                       |
+  |                             |                       |
+  | /PARALLELOGRAM: CSB_high()/ |                       |
+  | "Deselect Sensor B"         |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | /PARALLELOGRAM: CSA_low()/  |                       |
+  | "Select Sensor A"           |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | [RECT-BARS: spi_coms(0xD0,1)]                      |
+  | "Point to ID register"      |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | /PARALLELOGRAM: Read id1/   |                       |
+  | "id1 = spi_coms(0xFF,2)"    |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | /PARALLELOGRAM: CSA_high()/ |                       |
+  | "Deselect Sensor A"         |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | /PARALLELOGRAM: CSA_low()/  |                       |
+  | "Select Sensor A again"     |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | [RECT-BARS: spi_coms(0xF4,0)]                      |
+  | "Point to ctrl_meas register"                      |
+  |          |                  |                       |
+  |          v                  |                       |
+  | /PARALLELOGRAM: Write mode/ |                       |
+  | "spi_coms(0b00100101,0)"    |                       |
+  | "Oversampling x1, forced mode"                     |
+  |          |                  |                       |
+  |          v                  |                       |
+  | /PARALLELOGRAM: CSA_high()/ |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | [RECTANGLE: delay_ms(40)]   |                       |
+  | "Wait for conversion"       |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | /PARALLELOGRAM: CSA_low()/  |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | [RECT-BARS: spi_coms(0xF7,1)]                      |
+  | "Point to press_msb"        |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | /PARALLELOGRAM: Read 6 bytes/                      |
+  | "press_msb1 = spi_coms(0xFF,2)"                    |
+  | "press_lsb1 = spi_coms(0xFF,2)"                    |
+  | "press_xlsb1 = spi_coms(0xFF,2)"                   |
+  | "temp_msb1 = spi_coms(0xFF,2)"                     |
+  | "temp_lsb1 = spi_coms(0xFF,2)"                     |
+  | "temp_xlsb1 = spi_coms(0xFF,2)"                    |
+  |          |                  |                       |
+  |          v                  |                       |
+  | /PARALLELOGRAM: CSA_high()/ |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | [RECTANGLE: Combine bytes]  |                       |
+  | "raw_P1 = (press_msb1<<12)|(press_lsb1<<4)|..."   |
+  | "raw_T1 = (temp_msb1<<12)|(temp_lsb1<<4)|..."     |
+  |          |                  |                       |
+  |          v                  |                       |
+  | [RECT-BARS: compensate_T_A(raw_T1)]               |
+  | "Calculate Temp1"           |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | [RECT-BARS: compensate_P_A(raw_P1)]               |
+  | "Calculate Press1"          |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | [RECTANGLE: Format Data A]  |                       |
+  | "Temp_wholeA = Temp1/100"   |                       |
+  | "Temp_floatA = Temp1%100"   |                       |
+  | "Press_highA = Press1/100"  |                       |
+  | "Press_lowA = Press1%100"   |                       |
+  | "Apply corrections"         |                       |
+  |          |                  |                       |
+  +----------+------------------+                       |
+         |                                              |
+         v                                              |
+  +--[SENSOR B READING BLOCK]--+                       |
+  |                             |                       |
+  | /PARALLELOGRAM: CSA_high()/ |                       |
+  | "Deselect Sensor A"         |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | /PARALLELOGRAM: CSB_low()/  |                       |
+  | "Select Sensor B"           |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | [RECT-BARS: spi_coms(0xD0,1)]                      |
+  | "Point to ID register"      |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | /PARALLELOGRAM: Read id2/   |                       |
+  | "id2 = spi_coms(0xFF,2)"    |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | /PARALLELOGRAM: CSB_high()/ |                       |
+  | "Deselect Sensor B"         |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | /PARALLELOGRAM: CSB_low()/  |                       |
+  | "Select Sensor B again"     |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | [RECT-BARS: spi_coms(0xF4,0)]                      |
+  | "Point to ctrl_meas register"                      |
+  |          |                  |                       |
+  |          v                  |                       |
+  | /PARALLELOGRAM: Write mode/ |                       |
+  | "spi_coms(0b00100101,0)"    |                       |
+  | "Oversampling x1, forced mode"                     |
+  |          |                  |                       |
+  |          v                  |                       |
+  | /PARALLELOGRAM: CSB_high()/ |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | [RECTANGLE: delay_ms(40)]   |                       |
+  | "Wait for conversion"       |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | /PARALLELOGRAM: CSB_low()/  |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | [RECT-BARS: spi_coms(0xF7,1)]                      |
+  | "Point to press_msb"        |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | /PARALLELOGRAM: Read 6 bytes/                      |
+  | "press_msb2 = spi_coms(0xFF,2)"                    |
+  | "press_lsb2 = spi_coms(0xFF,2)"                    |
+  | "press_xlsb2 = spi_coms(0xFF,2)"                   |
+  | "temp_msb2 = spi_coms(0xFF,2)"                     |
+  | "temp_lsb2 = spi_coms(0xFF,2)"                     |
+  | "temp_xlsb2 = spi_coms(0xFF,2)"                    |
+  |          |                  |                       |
+  |          v                  |                       |
+  | /PARALLELOGRAM: CSB_high()/ |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | [RECTANGLE: Combine bytes]  |                       |
+  | "raw_P2 = (press_msb2<<12)|(press_lsb2<<4)|..."   |
+  | "raw_T2 = (temp_msb2<<12)|(temp_lsb2<<4)|..."     |
+  |          |                  |                       |
+  |          v                  |                       |
+  | [RECT-BARS: compensate_T_B(raw_T2)]               |
+  | "Calculate Temp2"           |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | [RECT-BARS: compensate_P_B(raw_P2)]               |
+  | "Calculate Press2"          |                       |
+  |          |                  |                       |
+  |          v                  |                       |
+  | [RECTANGLE: Format Data B]  |                       |
+  | "Temp_wholeB = Temp2/100"   |                       |
+  | "Temp_floatB = Temp2%100"   |                       |
+  | "Press_highB = Press2/100"  |                       |
+  | "Press_lowB = Press2%100"   |                       |
+  | "Apply corrections"         |                       |
+  |          |                  |                       |
+  +----------+------------------+                       |
+         |                                              |
+         v                                              |
+  [RECT-BARS: printf()]                                |
+  "Format: Temp0.0:Temp1.1:Press0.00:Press1.00"       |
+  "Send via UART"                                      |
+         |                                              |
+         v                                              |
+  (CIRCLE-C) --> Back to LOOP ------------------------>+
+
+
+========================================================================
+INTERRUPT SERVICE ROUTINE: USART_RXC
+========================================================================
+
+[ISR: USART_RXC triggered]
+         |
+         v
+/PARALLELOGRAM: Set PORTC.3 = 1/
+"Interrupt indicator ON"
+         |
+         v
+/PARALLELOGRAM: DS = UDR0/
+"Read received character"
+         |
+         v
+  <DIAMOND: DS == '$'?>
+         |
+    [Tidak] --> <DIAMOND: DS == '*'?>
+         |              |
+    [Ya]          [Tidak] --> [Return from ISR]
+         |              |
+         v          [Ya]
+  <DIAMOND: program == 0?>     |
+         |              v
+    [Ya]  [Tidak]  <DIAMOND: program != 0?>
+         |    |           |
+         v    v       [Ya] --> [Set program = 1]
+  [program=2] [program=0]         |
+         |         |              |
+         +----+----+              |
+              |                   |
+              v                   v
+      [Return from ISR]   [Return from ISR]
+
+
+========================================================================
+FUNCTION: spi_coms(data, RW)
+========================================================================
+
+[RECT-BARS: spi_coms(data, RW) called]
+         |
+         v
+  <DIAMOND: RW == 0?>
+         |
+    [Ya] --> [RECTANGLE: data &= ~(1<<7)]
+    |        "Clear bit 7 for write"
+    |                |
+[Tidak]             |
+    |               |
+    v               |
+  <DIAMOND: RW == 1?>
+         |          |
+    [Ya] ----+      |
+    |        |      |
+[Tidak]     |      |
+    |       v      v
+    +---> [RECTANGLE: data |= (1<<7)]
+              "Set bit 7 for read"
+                   |
+                   v
+         /PARALLELOGRAM: SPDR = data/
+         "Write to SPI data register"
+                   |
+                   v
+         <DIAMOND: Wait for SPIF flag?>
+         "while(!(SPSR & (1<<SPIF)))"
+                   |
+              [Loop until set]
+                   |
+              [Flag Set]
+                   |
+                   v
+         /PARALLELOGRAM: return SPDR/
+         "Read received data and return"
+                   |
+                   v
+              [END FUNCTION]
+
+
+========================================================================
+FUNCTION: compensation_init_whole()
+========================================================================
+
+[RECT-BARS: compensation_init_whole() called]
+         |
+         v
+[RECT-BARS: Call compensation_init_A()]
+"Load calibration for Sensor A"
+         |
+         v
+[RECT-BARS: Call compensation_init_B()]
+"Load calibration for Sensor B"
+         |
+         v
+[END FUNCTION]
+
+
+========================================================================
+FUNCTION: compensation_init_A()
+========================================================================
+
+[RECT-BARS: compensation_init_A() called]
+         |
+         v
+[HEXAGON: Initialize buffer[24], i, dig[12]]
+         |
+         v
+/PARALLELOGRAM: CSB_high()/
+"Ensure Sensor B is off"
+         |
+         v
+/PARALLELOGRAM: CSA_low()/
+"Select Sensor A"
+         |
+         v
+[RECT-BARS: spi_coms(0x88, 1)]
+"Point to calibration start address"
+         |
+         v
+[RECTANGLE: For loop i=0 to 23]
+    |
+    v
+/PARALLELOGRAM: buffer[i] = spi_coms(0xFF,2)/
+"Read 24 bytes of calibration data"
+    |
+    v
+[Loop continues until i=23]
+    |
+    v
+/PARALLELOGRAM: CSA_high()/
+"Deselect Sensor A"
+    |
+    v
+[RECTANGLE: For loop i=0 to 22 step 2]
+    |
+    v
+[RECTANGLE: dig[i/2] = buffer[i]|(buffer[i+1]<<8)]
+"Combine bytes into 16-bit values"
+    |
+    v
+[RECTANGLE: Assign to global variables]
+"dig_T1, dig_T2, dig_T3,"
+"dig_P1...dig_P9"
+    |
+    v
+[END FUNCTION]
+
+
+========================================================================
+FUNCTION: compensation_init_B() - Similar to A
+========================================================================
+[Uses CSB instead of CSA, stores to _B variables]
+
+
+========================================================================
+FUNCTION: compensate_T_A(adc_T) & compensate_P_A(adc_P)
+========================================================================
+[Complex calculation using calibration parameters]
+[Returns compensated temperature and pressure values]
+[Similar for _B versions]
+
+
+========================================================================
+KEY TIMING DIAGRAM
+========================================================================
+
+SPI Communication Sequence for Each Sensor:
+
+1. CS_low  (Select sensor)
+2. Write register address with read/write bit
+3. Read/Write data byte(s)
+4. CS_high (Deselect sensor)
+
+For Dual Sensor System:
+- Only ONE CS can be LOW at a time
+- Sequence: CSA operations → CSA high → CSB operations → CSB high
+
+
+========================================================================
+DATA FLOW SUMMARY
+========================================================================
+
+Sensor A (CSA on PC2):
+  Raw bytes → raw_T1, raw_P1 → Compensate → Temp_wholeA, Temp_floatA,
+                                             Press_highA, Press_lowA
+
+Sensor B (CSB on PD2):
+  Raw bytes → raw_T2, raw_P2 → Compensate → Temp_wholeB, Temp_floatB,
+                                             Press_highB, Press_lowB
+
+Final Output Format (UART):
+  "TA.TA:TB.TB:PA.PA:PB.PB\n\r"
+
+Example: "25.13:26.08:1013.45:1012.89"
+         |    |    |        |
+         |    |    |        +-- Pressure Sensor B
+         |    |    +----------- Pressure Sensor A
+         |    +---------------- Temperature Sensor B
+         +--------------------- Temperature Sensor A
+
+
+========================================================================
+END OF FLOWCHART DESCRIPTION
+========================================================================
