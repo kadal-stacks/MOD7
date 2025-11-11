@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOD7 - Dual BMP280 Sensor Flowchart</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .legend {
+            background-color: #f9f9f9;
+            border: 2px solid #ddd;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .legend h3 {
+            margin-top: 0;
+            color: #4CAF50;
+        }
+        .legend-item {
+            display: inline-block;
+            margin: 5px 15px;
+            font-size: 12px;
+        }
+        .flowchart {
+            text-align: center;
+            padding: 20px;
+        }
+        svg {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MOD7 - Dual BMP280 Sensor Reading Flowchart</h1>
+        <h3 style="text-align: center; color: #666;">Experiment 1: Reading Two BMP280 Sensors via SPI with LabVIEW Output Format</h3>
+        
+        <div class="legend">
+            <h3>Flowchart Symbol Legend</h3>
+            <div class="legend-item">🔵 <strong>Oval:</strong> Terminator (Start/End)</div>
+            <div class="legend-item">⬡ <strong>Hexagon:</strong> Preparation/Initialization</div>
+            <div class="legend-item">▭ <strong>Rectangle:</strong> Process</div>
+            <div class="legend-item">▯ <strong>Double-bar Rectangle:</strong> Predefined Process (Function Call)</div>
+            <div class="legend-item">◇ <strong>Diamond:</strong> Decision</div>
+            <div class="legend-item">▱ <strong>Parallelogram:</strong> Input/Output</div>
+            <div class="legend-item">⭘ <strong>Circle:</strong> On-Page Reference</div>
+        </div>
+
+        <div class="flowchart">
+            <svg width="1200" height="3800" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                        <polygon points="0 0, 10 3, 0 6" fill="#333" />
+                    </marker>
+                    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+                        <feOffset dx="2" dy="2" result="offsetblur"/>
+                        <feComponentTransfer>
+                            <feFuncA type="linear" slope="0.3"/>
+                        </feComponentTransfer>
+                        <feMerge>
+                            <feMergeNode/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                </defs>
+
+                <!-- Start -->
+                <ellipse cx="600" cy="40" rx="80" ry="30" fill="#4CAF50" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="48" text-anchor="middle" fill="white" font-weight="bold">Mulai</text>
+                <line x1="600" y1="70" x2="600" y2="100" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Initialization 1: Clock -->
+                <path d="M 520 100 L 680 100 L 700 130 L 680 160 L 520 160 L 540 130 Z" fill="#FFE082" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="125" text-anchor="middle" font-size="12">Set Clock Prescaler</text>
+                <text x="600" y="140" text-anchor="middle" font-size="11">(CLKPR = 16MHz)</text>
+                <line x1="600" y1="160" x2="600" y2="190" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Initialization 2: I/O Ports -->
+                <path d="M 500 190 L 700 190 L 720 230 L 700 270 L 500 270 L 520 230 Z" fill="#FFE082" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="220" text-anchor="middle" font-size="12">Set I/O Port Direction</text>
+                <text x="600" y="235" text-anchor="middle" font-size="10">DDRD, DDRB, DDRC</text>
+                <text x="600" y="250" text-anchor="middle" font-size="10">CSA=PC2, CSB=PD2 (HIGH)</text>
+                <line x1="600" y1="270" x2="600" y2="300" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Initialization 3: UART -->
+                <path d="M 520 300 L 680 300 L 700 340 L 680 380 L 520 380 L 540 340 Z" fill="#FFE082" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="330" text-anchor="middle" font-size="12">Initialize UART</text>
+                <text x="600" y="345" text-anchor="middle" font-size="10">UBRR0, UCSR0B, UCSR0C</text>
+                <text x="600" y="360" text-anchor="middle" font-size="10">Enable RX Interrupt</text>
+                <line x1="600" y1="380" x2="600" y2="410" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Initialization 4: SPI -->
+                <path d="M 520 410 L 680 410 L 700 450 L 680 490 L 520 490 L 540 450 Z" fill="#FFE082" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="440" text-anchor="middle" font-size="12">Initialize SPI</text>
+                <text x="600" y="455" text-anchor="middle" font-size="10">SPCR, SPSR</text>
+                <text x="600" y="470" text-anchor="middle" font-size="10">Master Mode, SCK=250kHz</text>
+                <line x1="600" y1="490" x2="600" y2="520" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Function Call: compensation_init_whole -->
+                <rect x="490" y="520" width="220" height="50" fill="#90CAF9" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <line x1="500" y1="520" x2="500" y2="570" stroke="#333" stroke-width="2"/>
+                <line x1="700" y1="520" x2="700" y2="570" stroke="#333" stroke-width="2"/>
+                <text x="600" y="540" text-anchor="middle" font-size="12">Call</text>
+                <text x="600" y="555" text-anchor="middle" font-size="11" font-weight="bold">compensation_init_whole()</text>
+                <line x1="600" y1="570" x2="600" y2="600" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Enable Global Interrupt -->
+                <path d="M 520 600 L 680 600 L 700 630 L 680 660 L 520 660 L 540 630 Z" fill="#FFE082" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="635" text-anchor="middle" font-size="12">Enable Global Interrupt (SEI)</text>
+                <line x1="600" y1="660" x2="600" y2="690" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Main Loop Start -->
+                <rect x="520" y="690" width="160" height="40" rx="10" fill="#E1BEE7" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="715" text-anchor="middle" font-size="13" font-weight="bold">while(1) - Main Loop</text>
+                <line x1="600" y1="730" x2="600" y2="760" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- On-Page Reference A -->
+                <circle cx="600" cy="790" r="25" fill="#FFF9C4" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="798" text-anchor="middle" font-size="14" font-weight="bold">A</text>
+                <line x1="600" y1="815" x2="600" y2="845" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Decision: program == 1? -->
+                <path d="M 600 845 L 730 920 L 600 995 L 470 920 Z" fill="#FFCCBC" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="915" text-anchor="middle" font-size="12" font-weight="bold">program == 1?</text>
+                <text x="600" y="930" text-anchor="middle" font-size="11">(Data diterima via</text>
+                <text x="600" y="943" text-anchor="middle" font-size="11">UART Interrupt)</text>
+                
+                <!-- No path -->
+                <line x1="470" y1="920" x2="350" y2="920" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+                <text x="400" y="910" text-anchor="middle" font-size="11" fill="red">Tidak</text>
+                
+                <!-- Loop back -->
+                <line x1="350" y1="920" x2="350" y2="790" stroke="#333" stroke-width="2"/>
+                <line x1="350" y1="790" x2="575" y2="790" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Yes path -->
+                <line x1="600" y1="995" x2="600" y2="1025" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+                <text x="620" y="1015" text-anchor="start" font-size="11" fill="green">Ya</text>
+
+                <!-- ========== SENSOR A SECTION ========== -->
+                <rect x="450" y="1025" width="300" height="35" fill="#C8E6C9" stroke="#333" stroke-width="3"/>
+                <text x="600" y="1048" text-anchor="middle" font-size="14" font-weight="bold">═══ SENSOR A (BMP280_1) ═══</text>
+                <line x1="600" y1="1060" x2="600" y2="1090" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- CSB High, CSA Low -->
+                <rect x="500" y="1090" width="200" height="50" fill="#B3E5FC" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="1110" text-anchor="middle" font-size="12">CSB_high()</text>
+                <text x="600" y="1125" text-anchor="middle" font-size="12">CSA_low()</text>
+                <text x="600" y="1138" text-anchor="middle" font-size="9" fill="#666">(Select Sensor A)</text>
+                <line x1="600" y1="1140" x2="600" y2="1170" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Read ID Register -->
+                <rect x="490" y="1170" width="220" height="50" fill="#90CAF9" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <line x1="500" y1="1170" x2="500" y2="1220" stroke="#333" stroke-width="2"/>
+                <line x1="700" y1="1170" x2="700" y2="1220" stroke="#333" stroke-width="2"/>
+                <text x="600" y="1190" text-anchor="middle" font-size="11">Call spi_coms(0xD0, 1)</text>
+                <text x="600" y="1205" text-anchor="middle" font-size="10">(Point to ID register)</text>
+                <line x1="600" y1="1220" x2="600" y2="1250" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Read ID Value -->
+                <path d="M 520 1250 L 680 1250 L 700 1280 L 680 1310 L 520 1310 L 500 1280 Z" fill="#B2DFDB" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="1275" text-anchor="middle" font-size="11">id1 = SPDR</text>
+                <text x="600" y="1290" text-anchor="middle" font-size="10">(Read ID)</text>
+                <line x1="600" y1="1310" x2="600" y2="1340" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- CSA High -->
+                <rect x="520" y="1340" width="160" height="35" fill="#B3E5FC" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="1363" text-anchor="middle" font-size="12">CSA_high()</text>
+                <line x1="600" y1="1375" x2="600" y2="1405" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- CSA Low again -->
+                <rect x="520" y="1405" width="160" height="35" fill="#B3E5FC" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="1428" text-anchor="middle" font-size="12">CSA_low()</text>
+                <line x1="600" y1="1440" x2="600" y2="1470" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Write Control Register -->
+                <rect x="480" y="1470" width="240" height="60" fill="#90CAF9" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <line x1="490" y1="1470" x2="490" y2="1530" stroke="#333" stroke-width="2"/>
+                <line x1="710" y1="1470" x2="710" y2="1530" stroke="#333" stroke-width="2"/>
+                <text x="600" y="1490" text-anchor="middle" font-size="11">Call spi_coms(0xF4, 0)</text>
+                <text x="600" y="1505" text-anchor="middle" font-size="10">(Point to ctrl_meas)</text>
+                <text x="600" y="1520" text-anchor="middle" font-size="10">Write 0b00100101</text>
+                <line x1="600" y1="1530" x2="600" y2="1560" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- CSA High -->
+                <rect x="520" y="1560" width="160" height="35" fill="#B3E5FC" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="1583" text-anchor="middle" font-size="12">CSA_high()</text>
+                <line x1="600" y1="1595" x2="600" y2="1625" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Delay 40ms -->
+                <rect x="520" y="1625" width="160" height="35" fill="#FFE0B2" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="1648" text-anchor="middle" font-size="12">delay_ms(40)</text>
+                <line x1="600" y1="1660" x2="600" y2="1690" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- CSA Low -->
+                <rect x="520" y="1690" width="160" height="35" fill="#B3E5FC" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="1713" text-anchor="middle" font-size="12">CSA_low()</text>
+                <line x1="600" y1="1725" x2="600" y2="1755" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Read Pressure & Temperature Data -->
+                <rect x="470" y="1755" width="260" height="80" fill="#90CAF9" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <line x1="480" y1="1755" x2="480" y2="1835" stroke="#333" stroke-width="2"/>
+                <line x1="720" y1="1755" x2="720" y2="1835" stroke="#333" stroke-width="2"/>
+                <text x="600" y="1775" text-anchor="middle" font-size="11">Call spi_coms(0xF7, 1)</text>
+                <text x="600" y="1790" text-anchor="middle" font-size="10">(Point to press_msb)</text>
+                <text x="600" y="1805" text-anchor="middle" font-size="10">Read 6 bytes:</text>
+                <text x="600" y="1820" text-anchor="middle" font-size="9">press_msb1, press_lsb1, press_xlsb1</text>
+                <text x="600" y="1832" text-anchor="middle" font-size="9">temp_msb1, temp_lsb1, temp_xlsb1</text>
+                <line x1="600" y1="1835" x2="600" y2="1865" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- CSA High -->
+                <rect x="520" y="1865" width="160" height="35" fill="#B3E5FC" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="1888" text-anchor="middle" font-size="12">CSA_high()</text>
+                <line x1="600" y1="1900" x2="600" y2="1930" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Process: Convert raw data -->
+                <rect x="480" y="1930" width="240" height="70" fill="#FFECB3" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="1950" text-anchor="middle" font-size="11">raw_P1 = Combine 20-bit</text>
+                <text x="600" y="1965" text-anchor="middle" font-size="11">raw_T1 = Combine 20-bit</text>
+                <text x="600" y="1980" text-anchor="middle" font-size="9">(Shift and OR operations)</text>
+                <line x1="600" y1="2000" x2="600" y2="2030" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Compensate Temperature A -->
+                <rect x="480" y="2030" width="240" height="50" fill="#90CAF9" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <line x1="490" y1="2030" x2="490" y2="2080" stroke="#333" stroke-width="2"/>
+                <line x1="710" y1="2030" x2="710" y2="2080" stroke="#333" stroke-width="2"/>
+                <text x="600" y="2050" text-anchor="middle" font-size="11">Call compensate_T_A(raw_T1)</text>
+                <text x="600" y="2065" text-anchor="middle" font-size="10">Temp1 = result</text>
+                <line x1="600" y1="2080" x2="600" y2="2110" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Compensate Pressure A -->
+                <rect x="480" y="2110" width="240" height="50" fill="#90CAF9" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <line x1="490" y1="2110" x2="490" y2="2160" stroke="#333" stroke-width="2"/>
+                <line x1="710" y1="2110" x2="710" y2="2160" stroke="#333" stroke-width="2"/>
+                <text x="600" y="2130" text-anchor="middle" font-size="11">Call compensate_P_A(raw_P1)</text>
+                <text x="600" y="2145" text-anchor="middle" font-size="10">Press1 = result</text>
+                <line x1="600" y1="2160" x2="600" y2="2190" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Format Data A -->
+                <rect x="470" y="2190" width="260" height="70" fill="#FFECB3" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="2210" text-anchor="middle" font-size="11">Format Sensor A Data:</text>
+                <text x="600" y="2225" text-anchor="middle" font-size="10">Temp_wholeA = Temp1 / 100</text>
+                <text x="600" y="2240" text-anchor="middle" font-size="10">Temp_floatA = Temp1 % 100</text>
+                <text x="600" y="2255" text-anchor="middle" font-size="10">Press_highA, Press_lowA</text>
+                <line x1="600" y1="2260" x2="600" y2="2290" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- ========== SENSOR B SECTION ========== -->
+                <rect x="450" y="2290" width="300" height="35" fill="#FFCCBC" stroke="#333" stroke-width="3"/>
+                <text x="600" y="2313" text-anchor="middle" font-size="14" font-weight="bold">═══ SENSOR B (BMP280_2) ═══</text>
+                <line x1="600" y1="2325" x2="600" y2="2355" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- CSA High, CSB Low -->
+                <rect x="500" y="2355" width="200" height="50" fill="#B3E5FC" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="2375" text-anchor="middle" font-size="12">CSA_high()</text>
+                <text x="600" y="2390" text-anchor="middle" font-size="12">CSB_low()</text>
+                <text x="600" y="2403" text-anchor="middle" font-size="9" fill="#666">(Select Sensor B)</text>
+                <line x1="600" y1="2405" x2="600" y2="2435" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Read ID Register B -->
+                <rect x="490" y="2435" width="220" height="50" fill="#90CAF9" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <line x1="500" y1="2435" x2="500" y2="2485" stroke="#333" stroke-width="2"/>
+                <line x1="700" y1="2435" x2="700" y2="2485" stroke="#333" stroke-width="2"/>
+                <text x="600" y="2455" text-anchor="middle" font-size="11">Call spi_coms(0xD0, 1)</text>
+                <text x="600" y="2470" text-anchor="middle" font-size="10">(Point to ID register)</text>
+                <line x1="600" y1="2485" x2="600" y2="2515" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Read ID Value B -->
+                <path d="M 520 2515 L 680 2515 L 700 2545 L 680 2575 L 520 2575 L 500 2545 Z" fill="#B2DFDB" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="2540" text-anchor="middle" font-size="11">id2 = SPDR</text>
+                <text x="600" y="2555" text-anchor="middle" font-size="10">(Read ID)</text>
+                <line x1="600" y1="2575" x2="600" y2="2605" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- CSB High -->
+                <rect x="520" y="2605" width="160" height="35" fill="#B3E5FC" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="2628" text-anchor="middle" font-size="12">CSB_high()</text>
+                <line x1="600" y1="2640" x2="600" y2="2670" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- CSB Low again -->
+                <rect x="520" y="2670" width="160" height="35" fill="#B3E5FC" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="2693" text-anchor="middle" font-size="12">CSB_low()</text>
+                <line x1="600" y1="2705" x2="600" y2="2735" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Write Control Register B -->
+                <rect x="480" y="2735" width="240" height="60" fill="#90CAF9" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <line x1="490" y1="2735" x2="490" y2="2795" stroke="#333" stroke-width="2"/>
+                <line x1="710" y1="2735" x2="710" y2="2795" stroke="#333" stroke-width="2"/>
+                <text x="600" y="2755" text-anchor="middle" font-size="11">Call spi_coms(0xF4, 0)</text>
+                <text x="600" y="2770" text-anchor="middle" font-size="10">(Point to ctrl_meas)</text>
+                <text x="600" y="2785" text-anchor="middle" font-size="10">Write 0b00100101</text>
+                <line x1="600" y1="2795" x2="600" y2="2825" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- CSB High -->
+                <rect x="520" y="2825" width="160" height="35" fill="#B3E5FC" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="2848" text-anchor="middle" font-size="12">CSB_high()</text>
+                <line x1="600" y1="2860" x2="600" y2="2890" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Delay 40ms -->
+                <rect x="520" y="2890" width="160" height="35" fill="#FFE0B2" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="2913" text-anchor="middle" font-size="12">delay_ms(40)</text>
+                <line x1="600" y1="2925" x2="600" y2="2955" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- CSB Low -->
+                <rect x="520" y="2955" width="160" height="35" fill="#B3E5FC" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="2978" text-anchor="middle" font-size="12">CSB_low()</text>
+                <line x1="600" y1="2990" x2="600" y2="3020" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Read Pressure & Temperature Data B -->
+                <rect x="470" y="3020" width="260" height="80" fill="#90CAF9" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <line x1="480" y1="3020" x2="480" y2="3100" stroke="#333" stroke-width="2"/>
+                <line x1="720" y1="3020" x2="720" y2="3100" stroke="#333" stroke-width="2"/>
+                <text x="600" y="3040" text-anchor="middle" font-size="11">Call spi_coms(0xF7, 1)</text>
+                <text x="600" y="3055" text-anchor="middle" font-size="10">(Point to press_msb)</text>
+                <text x="600" y="3070" text-anchor="middle" font-size="10">Read 6 bytes:</text>
+                <text x="600" y="3085" text-anchor="middle" font-size="9">press_msb2, press_lsb2, press_xlsb2</text>
+                <text x="600" y="3097" text-anchor="middle" font-size="9">temp_msb2, temp_lsb2, temp_xlsb2</text>
+                <line x1="600" y1="3100" x2="600" y2="3130" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- CSB High -->
+                <rect x="520" y="3130" width="160" height="35" fill="#B3E5FC" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="3153" text-anchor="middle" font-size="12">CSB_high()</text>
+                <line x1="600" y1="3165" x2="600" y2="3195" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Process: Convert raw data B -->
+                <rect x="480" y="3195" width="240" height="70" fill="#FFECB3" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="3215" text-anchor="middle" font-size="11">raw_P2 = Combine 20-bit</text>
+                <text x="600" y="3230" text-anchor="middle" font-size="11">raw_T2 = Combine 20-bit</text>
+                <text x="600" y="3245" text-anchor="middle" font-size="9">(Shift and OR operations)</text>
+                <line x1="600" y1="3265" x2="600" y2="3295" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Compensate Temperature B -->
+                <rect x="480" y="3295" width="240" height="50" fill="#90CAF9" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <line x1="490" y1="3295" x2="490" y2="3345" stroke="#333" stroke-width="2"/>
+                <line x1="710" y1="3295" x2="710" y2="3345" stroke="#333" stroke-width="2"/>
+                <text x="600" y="3315" text-anchor="middle" font-size="11">Call compensate_T_B(raw_T2)</text>
+                <text x="600" y="3330" text-anchor="middle" font-size="10">Temp2 = result</text>
+                <line x1="600" y1="3345" x2="600" y2="3375" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Compensate Pressure B -->
+                <rect x="480" y="3375" width="240" height="50" fill="#90CAF9" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <line x1="490" y1="3375" x2="490" y2="3425" stroke="#333" stroke-width="2"/>
+                <line x1="710" y1="3375" x2="710" y2="3425" stroke="#333" stroke-width="2"/>
+                <text x="600" y="3395" text-anchor="middle" font-size="11">Call compensate_P_B(raw_P2)</text>
+                <text x="600" y="3410" text-anchor="middle" font-size="10">Press2 = result</text>
+                <line x1="600" y1="3425" x2="600" y2="3455" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Format Data B -->
+                <rect x="470" y="3455" width="260" height="70" fill="#FFECB3" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="3475" text-anchor="middle" font-size="11">Format Sensor B Data:</text>
+                <text x="600" y="3490" text-anchor="middle" font-size="10">Temp_wholeB = Temp2 / 100</text>
+                <text x="600" y="3505" text-anchor="middle" font-size="10">Temp_floatB = Temp2 % 100</text>
+                <text x="600" y="3520" text-anchor="middle" font-size="10">Press_highB, Press_lowB</text>
+                <line x1="600" y1="3525" x2="600" y2="3555" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- ========== OUTPUT SECTION ========== -->
+                <rect x="450" y="3555" width="300" height="35" fill="#E1BEE7" stroke="#333" stroke-width="3"/>
+                <text x="600" y="3578" text-anchor="middle" font-size="14" font-weight="bold">═══ UART OUTPUT ═══</text>
+                <line x1="600" y1="3590" x2="600" y2="3620" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Printf Output -->
+                <path d="M 450 3620 L 750 3620 L 770 3670 L 750 3720 L 450 3720 L 430 3670 Z" fill="#C5E1A5" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="3645" text-anchor="middle" font-size="11" font-weight="bold">printf() via UART</text>
+                <text x="600" y="3660" text-anchor="middle" font-size="10">Format LabVIEW:</text>
+                <text x="600" y="3675" text-anchor="middle" font-size="9">"TempA:TempB:PressA:PressB"</text>
+                <text x="600" y="3690" text-anchor="middle" font-size="9">"%d.%d:%d.%d:%u.%02u:%u.%02u"</text>
+                <line x1="600" y1="3720" x2="600" y2="3750" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- On-Page Reference A (Loop back) -->
+                <circle cx="600" cy="3770" r="25" fill="#FFF9C4" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+                <text x="600" y="3778" text-anchor="middle" font-size="14" font-weight="bold">A</text>
+                
+                <!-- Loop back arrow -->
+                <line x1="625" y1="3770" x2="850" y2="3770" stroke="#333" stroke-width="2"/>
+                <line x1="850" y1="3770" x2="850" y2="790" stroke="#333" stroke-width="2"/>
+                <line x1="850" y1="790" x2="625" y2="790" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                <!-- Side note: UART Interrupt -->
+                <rect x="50" y="850" width="280" height="120" fill="#FFF3E0" stroke="#F57C00" stroke-width="2" stroke-dasharray="5,5" filter="url(#shadow)"/>
+                <text x="190" y="870" text-anchor="middle" font-size="12" font-weight="bold" fill="#E65100">UART RX INTERRUPT</text>
+                <text x="190" y="890" text-anchor="middle" font-size="10">(Asynchronous Event)</text>
+                <text x="190" y="910" text-anchor="middle" font-size="10">When '$' received:</text>
+                <text x="190" y="925" text-anchor="middle" font-size="10">Toggle program (0↔2)</text>
+                <text x="190" y="945" text-anchor="middle" font-size="10">When '*' received:</text>
+                <text x="190" y="960" text-anchor="middle" font-size="10">Set program = 1</text>
+
+            </svg>
+        </div>
+
+        <div style="margin-top: 30px; padding: 15px; background-color: #E8F5E9; border-left: 4px solid #4CAF50;">
+            <h3 style="margin-top: 0; color: #2E7D32;">Program Flow Summary</h3>
+            <ol style="line-height: 1.8;">
+                <li><strong>Initialization:</strong> Configure clock, I/O ports, UART (with RX interrupt), and SPI (Master mode, 250kHz)</li>
+                <li><strong>Calibration:</strong> Read compensation parameters from both BMP280 sensors (dig_T1-T3, dig_P1-P9)</li>
+                <li><strong>Main Loop:</strong> Wait for UART command (program == 1 triggered by '*' character)</li>
+                <li><strong>Sensor A Reading:</strong>
+                    <ul>
+                        <li>Select Sensor A (CSA=LOW, CSB=HIGH)</li>
+                        <li>Read ID register (0xD0)</li>
+                        <li>Configure forced mode (0xF4 = 0b00100101)</li>
+                        <li>Wait 40ms for measurement</li>
+                        <li>Read 6 bytes from 0xF7 (pressure + temperature raw data)</li>
+                        <li>Deselect sensor (CSA=HIGH)</li>
+                        <li>Apply compensation algorithms</li>
+                    </ul>
+                </li>
+                <li><strong>Sensor B Reading:</strong> Same process with CSB control</li>
+                <li><strong>Data Formatting:</strong> Convert to integer.decimal format (e.g., 25.34°C, 1013.25 hPa)</li>
+                <li><strong>UART Transmission:</strong> Send formatted string: "TempA:TempB:PressA:PressB\n\r"</li>
+                <li><strong>Loop:</strong> Return to main loop, wait for next command</li>
+            </ol>
+        </div>
+
+        <div style="margin-top: 20px; padding: 15px; background-color: #E3F2FD; border-left: 4px solid #2196F3;">
+            <h3 style="margin-top: 0; color: #1565C0;">Key Technical Details</h3>
+            <ul style="line-height: 1.8;">
+                <li><strong>SPI Communication:</strong> MSB first, Master mode, SCK = 250kHz (F_CPU/64)</li>
+                <li><strong>Chip Select Logic:</strong> Active LOW - only one sensor selected at a time</li>
+                <li><strong>BMP280 Registers:</strong>
+                    <ul>
+                        <li>0xD0: Chip ID (should return 0x58)</li>
+                        <li>0x88-0x9F: Calibration data (24 bytes)</li>
+                        <li>0xF4: ctrl_meas (measurement control)</li>
+                        <li>0xF7-0xFC: Measurement data (pressure + temperature)</li>
+                    </ul>
+                </li>
+                <li><strong>Data Format:</strong> 20-bit ADC values (MSB, LSB, XLSB with 4-bit shift)</li>
+                <li><strong>Compensation:</strong> Uses manufacturer's algorithms with calibration coefficients</li>
+                <li><strong>Output Format:</strong> "25.32:26.45:1013.25:1012.97" (Temp0:Temp1:Press0:Press1)</li>
+            </ul>
+        </div>
+
+        <div style="margin-top: 20px; padding: 10px; background-color: #f0f0f0; text-align: center; font-size: 11px; color: #666;">
+            <p><strong>MOD7 - Dual BMP280 Sensor Reading via SPI</strong></p>
+            <p>ATmega328P @ 16MHz | SPI Master Mode | UART Communication | LabVIEW Compatible Output</p>
+        </div>
+    </div>
+</body>
+</html>
