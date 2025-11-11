@@ -1,0 +1,576 @@
+========================================================================
+MOD7 FLOWCHART: DUAL BMP280 SENSOR (SPI + UART) - EXPERIMENT 1
+========================================================================
+
+FLOWCHART DESCRIPTION (Top to Bottom, Left to Right)
+Following the code structure and MOD6 style reference
+
+------------------------------------------------------------------------
+SECTION 1: PROGRAM START & INITIALIZATION
+------------------------------------------------------------------------
+
+[TERMINATOR - OVAL]
+"Mulai (main)"
+    |
+    v
+[PREPARATION - HEXAGON]
+"Set Global Var:
+I/O Port, Register Address
+program = 0"
+    |
+    v
+[PREPARATION - HEXAGON]
+"Initialize Clock:
+CLKPR = 16 MHz"
+    |
+    v
+[PREPARATION - HEXAGON]
+"Set I/O Ports:
+DDRD, PORTD (CSB)
+DDRB (MOSI, SCK, MISO)
+DDRC, PORTC (CSA, LED)"
+    |
+    v
+[PREPARATION - HEXAGON]
+"Initialize UART:
+UBRR0 = 0x67 (9600 baud)
+Enable RXEN0, TXEN0, RXCIE0"
+    |
+    v
+[PREPARATION - HEXAGON]
+"Initialize SPI:
+SPCR = Master, 250kHz
+MSB first, CPOL=0, CPHA=0"
+    |
+    v
+[PREDEFINED PROCESS - DOUBLE BARS]
+"Call compensation_init_whole()"
+    |
+    v
+[ON-PAGE REFERENCE - CIRCLE] "A"
+    |
+    v
+[PREPARATION - HEXAGON]
+"Enable Global Interrupt:
+SEI()"
+    |
+    v
+
+------------------------------------------------------------------------
+SECTION 2: MAIN LOOP - WAIT FOR UART COMMAND
+------------------------------------------------------------------------
+
+[ON-PAGE REFERENCE - CIRCLE] "Loop"
+    |
+    v
+[DECISION - DIAMOND]
+"program == 1 ?"
+    |
+    +-----> Tidak ----+
+    |                 |
+    Ya                |
+    |                 |
+    v                 |
+[ON-PAGE REFERENCE   |
+ - CIRCLE] "B"       |
+    |                 |
+    v                 |
+                      |
+    <-----------------+
+    (loops back to "Loop")
+
+------------------------------------------------------------------------
+INTERRUPT SERVICE ROUTINE (Runs in parallel when UART data received)
+------------------------------------------------------------------------
+
+[PREPARATION - HEXAGON - in box]
+"USART_RXC Interrupt"
+    |
+    v
+[INPUT/OUTPUT - PARALLELOGRAM]
+"Read DS from UDR0
+Set PORTC.3 = 1 (LED ON)"
+    |
+    v
+[DECISION - DIAMOND]
+"DS == '$' ?"
+    |
+    +-----> Tidak ------+
+    |                   |
+    Ya                  |
+    |                   v
+    v               [DECISION - DIAMOND]
+[DECISION           "DS == '*' ?"
+- DIAMOND]              |
+"program == 0 ?"        +-----> Tidak -----> (Exit ISR)
+    |                   |
+    +--Ya-->+        Ya |
+    |       |           v
+ Tidak      |       [DECISION - DIAMOND]
+    |       |       "program != 0 ?"
+    v       |           |
+[PROCESS    |           +-----> Tidak -----> (Exit ISR)
+-RECTANGLE] |           |
+"program=0" |        Ya |
+    |       |           v
+    v       |       [PROCESS - RECTANGLE]
+(Exit ISR)  |       "program = 1"
+            |           |
+            v           v
+    [PROCESS        (Exit ISR)
+    -RECTANGLE]
+    "program=2"
+        |
+        v
+    (Exit ISR)
+
+------------------------------------------------------------------------
+SECTION 3: SENSOR A (BMP280 #1) - READ SEQUENCE
+------------------------------------------------------------------------
+
+[ON-PAGE REFERENCE - CIRCLE] "B"
+    |
+    v
+[PROCESS - RECTANGLE]
+"CSB_high()
+(Deselect Sensor B)"
+    |
+    v
+[PROCESS - RECTANGLE]
+"CSA_low()
+(Select Sensor A)"
+    |
+    v
+[PREDEFINED PROCESS - DOUBLE BARS]
+"Call spi_coms(0xD0, 1)
+(Read ID Register)"
+    |
+    v
+[INPUT/OUTPUT - PARALLELOGRAM]
+"id1 = SPDR"
+    |
+    v
+[PROCESS - RECTANGLE]
+"CSA_high()
+(Deselect Sensor A)"
+    |
+    v
+[PROCESS - RECTANGLE]
+"CSA_low()
+(Select Sensor A)"
+    |
+    v
+[PREDEFINED PROCESS - DOUBLE BARS]
+"Call spi_coms(0xF4, 0)
+(Write to ctrl_meas)"
+    |
+    v
+[PREDEFINED PROCESS - DOUBLE BARS]
+"Call spi_coms(0b00100101, 0)
+(Force mode, oversample x1)"
+    |
+    v
+[PROCESS - RECTANGLE]
+"CSA_high()
+(Deselect Sensor A)"
+    |
+    v
+[PREDEFINED PROCESS - DOUBLE BARS]
+"Call delay_ms(40)
+(Wait for measurement)"
+    |
+    v
+[PROCESS - RECTANGLE]
+"CSA_low()
+(Select Sensor A)"
+    |
+    v
+[PREDEFINED PROCESS - DOUBLE BARS]
+"Call spi_coms(0xF7, 1)
+(Pointer to press_msb)"
+    |
+    v
+[INPUT/OUTPUT - PARALLELOGRAM]
+"Read 6 bytes via SPI:
+press_msb1, press_lsb1, press_xlsb1
+temp_msb1, temp_lsb1, temp_xlsb1"
+    |
+    v
+[PROCESS - RECTANGLE]
+"CSA_high()
+(Deselect Sensor A)"
+    |
+    v
+[PROCESS - RECTANGLE]
+"raw_P1 = (press_msb1<<12) | (press_lsb1<<4) | (press_xlsb1>>4)
+raw_T1 = (temp_msb1<<12) | (temp_lsb1<<4) | (temp_xlsb1>>4)"
+    |
+    v
+[PREDEFINED PROCESS - DOUBLE BARS]
+"Call compensate_T_A(raw_T1)
+Result: Temp1"
+    |
+    v
+[PREDEFINED PROCESS - DOUBLE BARS]
+"Call compensate_P_A(raw_P1)
+Result: Press1"
+    |
+    v
+[PROCESS - RECTANGLE]
+"Calculate display format:
+Temp_wholeA = Temp1 / 100
+Temp_floatA = abs(Temp1 % 100) - 2
+Press_highA = Press1 / 100
+Press_lowA = (Press1 % 100) - 3"
+    |
+    v
+
+------------------------------------------------------------------------
+SECTION 4: SENSOR B (BMP280 #2) - READ SEQUENCE
+------------------------------------------------------------------------
+
+[PROCESS - RECTANGLE]
+"CSB_low()
+(Select Sensor B)"
+    |
+    v
+[PREDEFINED PROCESS - DOUBLE BARS]
+"Call spi_coms(0xD0, 1)
+(Read ID Register)"
+    |
+    v
+[INPUT/OUTPUT - PARALLELOGRAM]
+"id2 = SPDR"
+    |
+    v
+[PROCESS - RECTANGLE]
+"CSB_high()
+(Deselect Sensor B)"
+    |
+    v
+[PROCESS - RECTANGLE]
+"CSB_low()
+(Select Sensor B)"
+    |
+    v
+[PREDEFINED PROCESS - DOUBLE BARS]
+"Call spi_coms(0xF4, 0)
+(Write to ctrl_meas)"
+    |
+    v
+[PREDEFINED PROCESS - DOUBLE BARS]
+"Call spi_coms(0b00100101, 0)
+(Force mode, oversample x1)"
+    |
+    v
+[PROCESS - RECTANGLE]
+"CSB_high()
+(Deselect Sensor B)"
+    |
+    v
+[PREDEFINED PROCESS - DOUBLE BARS]
+"Call delay_ms(40)
+(Wait for measurement)"
+    |
+    v
+[PROCESS - RECTANGLE]
+"CSB_low()
+(Select Sensor B)"
+    |
+    v
+[PREDEFINED PROCESS - DOUBLE BARS]
+"Call spi_coms(0xF7, 1)
+(Pointer to press_msb)"
+    |
+    v
+[INPUT/OUTPUT - PARALLELOGRAM]
+"Read 6 bytes via SPI:
+press_msb2, press_lsb2, press_xlsb2
+temp_msb2, temp_lsb2, temp_xlsb2"
+    |
+    v
+[PROCESS - RECTANGLE]
+"CSB_high()
+(Deselect Sensor B)"
+    |
+    v
+[PROCESS - RECTANGLE]
+"raw_P2 = (press_msb2<<12) | (press_lsb2<<4) | (press_xlsb2>>4)
+raw_T2 = (temp_msb2<<12) | (temp_lsb2<<4) | (temp_xlsb2>>4)"
+    |
+    v
+[PREDEFINED PROCESS - DOUBLE BARS]
+"Call compensate_T_B(raw_T2)
+Result: Temp2"
+    |
+    v
+[PREDEFINED PROCESS - DOUBLE BARS]
+"Call compensate_P_B(raw_P2)
+Result: Press2"
+    |
+    v
+[PROCESS - RECTANGLE]
+"Calculate display format:
+Temp_wholeB = Temp2 / 100
+Temp_floatB = abs(Temp2 % 100) - 2
+Press_highB = Press2 / 100
+Press_lowB = (Press2 % 100) - 3"
+    |
+    v
+
+------------------------------------------------------------------------
+SECTION 5: SEND DATA TO LABVIEW VIA UART
+------------------------------------------------------------------------
+
+[INPUT/OUTPUT - PARALLELOGRAM]
+"printf() via UART:
+Format: %d.%d:%d.%d:%u.%02u:%u.%02u
+Data: [Temp0]:[Temp1]:[Press0]:[Press1]"
+    |
+    v
+[ON-PAGE REFERENCE - CIRCLE] "C"
+    |
+    v
+(Flow returns back to "Loop")
+
+
+------------------------------------------------------------------------
+DETAILED SUBROUTINES (Referenced by Predefined Process symbols)
+------------------------------------------------------------------------
+
+SUBROUTINE: compensation_init_whole()
+--------------------------------------------
+[PREDEFINED PROCESS - DOUBLE BARS]
+"Call compensation_init_A()"
+    |
+    v
+[PREDEFINED PROCESS - DOUBLE BARS]
+"Call compensation_init_B()"
+    |
+    v
+(Return)
+
+
+SUBROUTINE: compensation_init_A()
+--------------------------------------------
+[PROCESS - RECTANGLE]
+"CSB_high(), CSA_low()"
+    |
+    v
+[PREDEFINED PROCESS - DOUBLE BARS]
+"Call spi_coms(0x88, 1)
+(Point to calibration data)"
+    |
+    v
+[PROCESS - RECTANGLE]
+"Loop i = 0 to 23"
+    |
+    v
+[INPUT/OUTPUT - PARALLELOGRAM]
+"Read buffer[i] = SPDR
+via spi_coms(0xFF, 2)"
+    |
+    v
+[PROCESS - RECTANGLE]
+"CSA_high()"
+    |
+    v
+[PROCESS - RECTANGLE]
+"Parse buffer to:
+dig_T1, dig_T2, dig_T3
+dig_P1..dig_P9"
+    |
+    v
+(Return)
+
+
+SUBROUTINE: compensation_init_B()
+--------------------------------------------
+[PROCESS - RECTANGLE]
+"CSA_high(), CSB_low()"
+    |
+    v
+[PREDEFINED PROCESS - DOUBLE BARS]
+"Call spi_coms(0x88, 1)
+(Point to calibration data)"
+    |
+    v
+[PROCESS - RECTANGLE]
+"Loop i = 0 to 23"
+    |
+    v
+[INPUT/OUTPUT - PARALLELOGRAM]
+"Read buffer[i] = SPDR
+via spi_coms(0xFF, 2)"
+    |
+    v
+[PROCESS - RECTANGLE]
+"CSB_high()"
+    |
+    v
+[PROCESS - RECTANGLE]
+"Parse buffer to:
+dig_T1_B, dig_T2_B, dig_T3_B
+dig_P1_B..dig_P9_B"
+    |
+    v
+(Return)
+
+
+SUBROUTINE: spi_coms(data, RW)
+--------------------------------------------
+[DECISION - DIAMOND]
+"RW == 0 ?"
+    |
+    +----> Tidak ---+
+    |               |
+    Ya              v
+    |           [DECISION - DIAMOND]
+    v           "RW == 1 ?"
+[PROCESS            |
+-RECTANGLE]         +----> Tidak ---+
+"data &= ~(1<<7)    |               |
+(Clear bit 7)"      Ya              |
+    |               |               |
+    |               v               v
+    |       [PROCESS            [PROCESS
+    |       -RECTANGLE]         -RECTANGLE]
+    |       "data |= (1<<7)     "Keep data as is"
+    |       (Set bit 7)"            |
+    |               |               |
+    +---------------+---------------+
+                    |
+                    v
+[INPUT/OUTPUT - PARALLELOGRAM]
+"SPDR = data
+(Transmit via SPI)"
+    |
+    v
+[DECISION - DIAMOND]
+"SPIF flag set?"
+(while(!(SPSR & (1<<SPIF))))
+    |
+    +----> Tidak ---+
+    |               |
+    Ya              |
+    |               |
+    <---------------+
+    (Wait loop)
+    |
+    v
+[INPUT/OUTPUT - PARALLELOGRAM]
+"Read SPDR
+(Return received data)"
+    |
+    v
+(Return)
+
+
+SUBROUTINE: compensate_T_A(adc_T) & compensate_T_B(adc_T)
+------------------------------------------------------------
+[PROCESS - RECTANGLE]
+"Calculate var1:
+((((adc_T>>3) - (dig_T1<<1))) * dig_T2) >> 11"
+    |
+    v
+[PROCESS - RECTANGLE]
+"Calculate var2:
+(((((adc_T>>4) - dig_T1) * ((adc_T>>4) - dig_T1)) >> 12) * dig_T3) >> 14"
+    |
+    v
+[PROCESS - RECTANGLE]
+"t_fine = var1 + var2"
+    |
+    v
+[PROCESS - RECTANGLE]
+"T = (t_fine * 5 + 128) >> 8"
+    |
+    v
+(Return T)
+
+
+SUBROUTINE: compensate_P_A(adc_P) & compensate_P_B(adc_P)
+------------------------------------------------------------
+[PROCESS - RECTANGLE]
+"Calculate var1:
+(t_fine/2.0) - 64000.0"
+    |
+    v
+[PROCESS - RECTANGLE]
+"Calculate var2 using:
+var1, dig_P4, dig_P5, dig_P6"
+    |
+    v
+[PROCESS - RECTANGLE]
+"Update var1 using:
+dig_P2, dig_P3"
+    |
+    v
+[PROCESS - RECTANGLE]
+"Calculate var1:
+(1.0 + var1/32768.0) * dig_P1"
+    |
+    v
+[DECISION - DIAMOND]
+"var1 == 0.0 ?"
+    |
+    +----> Tidak ---+
+    |               |
+    Ya              |
+    |               v
+    v           [PROCESS - RECTANGLE]
+[PROCESS        "p = 1048576.0 - adc_P"
+-RECTANGLE]         |
+"Return 0"          v
+    |           [PROCESS - RECTANGLE]
+    v           "p = (p - (var2/4096.0)) * 6250.0 / var1"
+(Return)            |
+                    v
+                [PROCESS - RECTANGLE]
+                "Calculate final p using:
+                var1 (with dig_P9),
+                var2 (with dig_P8),
+                dig_P7"
+                    |
+                    v
+                [PROCESS - RECTANGLE]
+                "Clamp p between 0 and 4294967295"
+                    |
+                    v
+                (Return p)
+
+------------------------------------------------------------------------
+KEY POINTS FOR MOD7 EXPERIMENT 1
+------------------------------------------------------------------------
+
+1. DUAL SENSOR OPERATION:
+   - Sensor A uses CSA (PORTC.2) as Chip Select
+   - Sensor B uses CSB (PORTD.2) as Chip Select
+   - Only ONE sensor can be active at a time (one CS LOW, other CS HIGH)
+
+2. SPI COMMUNICATION SEQUENCE (per sensor):
+   a) Set CS LOW (select sensor)
+   b) Send command/address via spi_coms()
+   c) Wait for SPIF flag (transmission complete)
+   d) Read/Write data via SPDR
+   e) Set CS HIGH (deselect sensor)
+
+3. DATA FLOW:
+   - Read raw 20-bit data (temp + pressure) from each sensor
+   - Apply sensor-specific calibration (dig_T*, dig_P*)
+   - Format as decimal (XX.XX for temp, XXXX.XX for pressure)
+   - Send via UART in format: [Temp0]:[Temp1]:[Press0]:[Press1]
+
+4. UART TRIGGER MECHANISM:
+   - Program waits in loop until UART interrupt sets program=1
+   - Send '$' to toggle program mode (0 <-> 2)
+   - Send '*' when program!=0 to set program=1 (start reading)
+
+5. LABVIEW INTEGRATION:
+   - Format: "%d.%d:%d.%d:%u.%02u:%u.%02u\n\r"
+   - Example: "25.34:26.12:1013.25:1014.48"
+   - LabVIEW parses using ':' delimiter
+
+========================================================================
+END OF FLOWCHART DESCRIPTION
+========================================================================
